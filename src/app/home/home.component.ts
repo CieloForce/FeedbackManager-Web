@@ -230,6 +230,10 @@ export class HomeComponent implements OnInit {
   } 
 
   mountStackedBarChart() {
+    // TODO: Refatorar e adaptar o gráfico com dados reais
+    const elogio = this.typeCounter['elogio'];
+    const sugestao = this.typeCounter['sugestao'];
+    const critica = this.typeCounter['critica'];
 
     this.stackedData = {
       labels: ['Recebido', 'Em Processamento', 'Finalizado'],
@@ -238,19 +242,19 @@ export class HomeComponent implements OnInit {
           type: 'bar',
           label: 'Elogios',
           backgroundColor: this.backgroundColor[0],
-          data: [this.typeCounter['elogio'], 25, 12]
+          data: [elogio, elogio*2, elogio*3]
         },
         {
           type: 'bar',
           label: 'Sugestões',
           backgroundColor: this.backgroundColor[1],
-          data: [this.typeCounter['sugestão'], 84, 24]
+          data: [sugestao, sugestao*2, sugestao*3]
         },
         {
           type: 'bar',
           label: 'Críticas',
           backgroundColor: this.backgroundColor[2],
-          data: [this.typeCounter['critica'], 52, 24]
+          data: [critica, critica*2, critica*3]
         }
       ]
     };
