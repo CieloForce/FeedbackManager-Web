@@ -1,32 +1,68 @@
 import { Injectable } from '@angular/core';
-import axios from 'axios';
+import { Observable } from 'rxjs';
 
 @Injectable({
     providedIn: 'root'
 })
 export class ApiService {
 
-    axios: any;
+    private baseUrl = 'http://localhost:3333';
 
-    constructor() {
-        this.axios = axios.create({
-            baseURL: 'http://localhost:8080/'
+    constructor() { }
+
+    send(newItem: any): Observable<any> {
+        const endpoint = `${this.baseUrl}/send`;
+
+        const requestOptions: RequestInit = {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(newItem),
+        };
+
+        return new Observable((subscriber) => {
+            fetch(endpoint, requestOptions)
+                .then(response => response.json())
+                .then(data => subscriber.next(data))
+                .catch(error => subscriber.error(error));
         });
     }
 
-    get(endpoint: string): Promise<any> {
-        return this.axios.get(endpoint);
+    info(): Observable<any> {
+        const endpoint = `${this.baseUrl}/info`;
+
+        return new Observable((subscriber) => {
+            fetch(endpoint)
+                .then(response => response.json())
+                .then(data => subscriber.next(data))
+                .catch(error => subscriber.error(error));
+        });
     }
 
-    post(endpoint: string, data: any): Promise<any> {
-        return this.axios.post(endpoint, data);
+    size(id: any): Observable<any> {
+        const endpoint = `${this.baseUrl}/size/${id}`;
+
+        return new Observable((subscriber) => {
+            fetch(endpoint)
+                .then(response => response.json())
+                .then(data => subscriber.next(data))
+                .catch(error => subscriber.error(error));
+        });
     }
 
-    put(endpoint: string, data: any): Promise<any> {
-        return this.axios.put(endpoint, data);
-    }
+    purge(id: any): Observable<any> {
+        const endpoint = `${this.baseUrl}/purge/${id}`;
 
-    delete(endpoint: string): Promise<any> {
-        return this.axios.delete(endpoint);
+        const requestOptions: RequestInit = {
+            method: 'DELETE',
+        };
+
+        return new Observable((subscriber) => {
+            fetch(endpoint, requestOptions)
+                .then(response => response.json())
+                .then(data => subscriber.next(data))
+                .catch(error => subscriber.error(error));
+        });
     }
 }

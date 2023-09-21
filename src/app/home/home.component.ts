@@ -1,10 +1,23 @@
 import { Component, OnInit  } from '@angular/core';
 import { CommonModule } from '@angular/common';
+
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
 import { ImageModule } from 'primeng/image';
 import { ChartModule } from 'primeng/chart';
 import { KnobModule } from 'primeng/knob';
+
+import { faker } from '@faker-js/faker';
+import { ApiService } from '../../services/ApiService';
+
+interface IFeedback {
+  type: string;
+  message: string;
+  status: string;
+  date: Date;
+  messageId?: number;
+}
+
 @Component({
   selector: 'app-home',
   standalone: true,
@@ -14,12 +27,13 @@ import { KnobModule } from 'primeng/knob';
     CardModule,
     ImageModule,
     ChartModule,
-    KnobModule
+    KnobModule,
   ],
   templateUrl: './home.component.html',
   styleUrls: ['./home.component.css']
 })
 export class HomeComponent implements OnInit {
+
   pieData: any;
   pieOptions: any;
   stackedData: any;
@@ -31,7 +45,12 @@ export class HomeComponent implements OnInit {
   surfaceBorder: any;
   backgroundColor: any;
 
-  elogioTotal!: number;
+  messages!: any[];
+
+  knobValue: number = 70;
+  
+  constructor(private apiService: ApiService) { }
+  
 
   ngOnInit() {
     this.documentStyle = getComputedStyle(document.documentElement);
@@ -43,6 +62,72 @@ export class HomeComponent implements OnInit {
 
     this.mountPieChart();
     this.mountStackedBarChart();
+  }
+
+  async elogioClicked() {
+    console.log('Elogio button clicked');
+
+    let data: IFeedback = { 
+      type: 'elogio',
+      message: faker.lorem.sentence(),
+      status: 'Recebido',
+      date: new Date(),
+    };
+
+    this.apiService.send(data).subscribe({
+      next: (response) => {
+        data.messageId = response.messageId;
+        this.setMessages(data);
+        console.log('Recebido:', data);
+      },
+      error: (error) => {
+        console.error('Erro ao chamar a API:', error);
+      }
+    });
+  }
+
+  sugestaoClicked() {
+    console.log('Sugestão button clicked');
+
+    let data: IFeedback = { 
+      type: 'sugestao',
+      message: faker.lorem.sentence(),
+      status: 'Recebido',
+      date: new Date(),
+    };
+
+    this.apiService.send(data).subscribe({
+      next: (response) => {
+        data.messageId = response.messageId;
+        this.setMessages(data);
+        console.log('Recebido:', data);
+      },
+      error: (error) => {
+        console.error('Erro ao chamar a API:', error);
+      }
+    });
+  }
+
+  criticaClicked() {
+    console.log('Crítica button clicked');
+
+    let data: IFeedback = { 
+      type: 'critica',
+      message: faker.lorem.sentence(),
+      status: 'Recebido',
+      date: new Date(),
+    };
+
+    this.apiService.send(data).subscribe({
+      next: (response) => {
+        data.messageId = response.messageId;
+        this.setMessages(data);
+        console.log('Recebido:', data);
+      },
+      error: (error) => {
+        console.error('Erro ao chamar a API:', error);
+      }
+    });
   }
   
   mountPieChart() {
@@ -134,5 +219,15 @@ export class HomeComponent implements OnInit {
         }
       }
     };
+  }
+
+  getMessages() {
+    return localStorage.getItem('messages') ? JSON.parse(localStorage.getItem('messages') || '{}') : []
+  }
+
+  setMessages(value: any) {
+    this.messages = this.getMessages();
+    this.messages.push(value);
+    return localStorage.setItem('messages', JSON.stringify(this.messages));
   }
 }
