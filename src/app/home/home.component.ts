@@ -69,7 +69,7 @@ export class HomeComponent implements OnInit {
     this.textColor = this.documentStyle.getPropertyValue('--text-color');
     this.textColorSecondary = this.documentStyle.getPropertyValue('--text-color-secondary');
     this.surfaceBorder = this.documentStyle.getPropertyValue('--surface-border');
-    this.backgroundColor = [this.documentStyle.getPropertyValue('--green-300'), this.documentStyle.getPropertyValue('--yellow-300'), this.documentStyle.getPropertyValue('--red-300')];
+    this.backgroundColor = [this.documentStyle.getPropertyValue('--green-400'), this.documentStyle.getPropertyValue('--yellow-400'), this.documentStyle.getPropertyValue('--red-400')];
 
     this.mountKnob();
     this.info();
@@ -155,6 +155,9 @@ export class HomeComponent implements OnInit {
         this.size = response.size;
         const infoPromises: Promise<any>[] = [];
         for (let i = 0; i < this.size; i++) {
+          if(this.messages.length >= this.size) {
+            break;
+          }
           const infoPromise = new Promise<void>((resolve, reject) => {
             this.apiService.info().subscribe({
               next: (response) => {
