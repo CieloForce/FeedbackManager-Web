@@ -205,16 +205,11 @@ export class HomeComponent implements OnInit {
   }
 
   mountPieChart() {
-
-    let elogios = this.typeCounter['elogio'];
-    let sugestoes = this.typeCounter['sugestao'];
-    let criticas = this.typeCounter['critica'];
-
     this.pieData = {
       labels: ['Elogios', 'Sugestões', 'Críticas'],
       datasets: [
         {
-          data: [elogios, sugestoes, criticas],
+          data: [this.typeCounter['elogio'], this.typeCounter['sugestao'], this.typeCounter['critica']],
           backgroundColor: this.backgroundColor,
           hoverBackgroundColor: [this.documentStyle.getPropertyValue('--green-100'), this.documentStyle.getPropertyValue('--yellow-100'), this.documentStyle.getPropertyValue('--red-100')]
         }
@@ -243,19 +238,19 @@ export class HomeComponent implements OnInit {
           type: 'bar',
           label: 'Elogios',
           backgroundColor: this.backgroundColor[0],
-          data: [50, 25, 12]
+          data: [this.typeCounter['elogio'], 25, 12]
         },
         {
           type: 'bar',
           label: 'Sugestões',
           backgroundColor: this.backgroundColor[1],
-          data: [21, 84, 24]
+          data: [this.typeCounter['sugestão'], 84, 24]
         },
         {
           type: 'bar',
           label: 'Críticas',
           backgroundColor: this.backgroundColor[2],
-          data: [41, 52, 24]
+          data: [this.typeCounter['critica'], 52, 24]
         }
       ]
     };
