@@ -29,8 +29,8 @@ export class ApiService {
         });
     }
 
-    info(): Observable<any> {
-        const endpoint = `${this.baseUrl}/info`;
+    info(type: any = ''): Observable<any> {
+        const endpoint = `${this.baseUrl}/info/${type}`;
 
         return new Observable((subscriber) => {
             fetch(endpoint)
@@ -40,8 +40,8 @@ export class ApiService {
         });
     }
 
-    size(id: any): Observable<any> {
-        const endpoint = `${this.baseUrl}/size/${id}`;
+    size(): Observable<any> {
+        const endpoint = `${this.baseUrl}/size/`;
 
         return new Observable((subscriber) => {
             fetch(endpoint)

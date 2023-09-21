@@ -1,4 +1,4 @@
-import { Component, OnInit  } from '@angular/core';
+import { Component, OnChanges, OnInit, SimpleChanges  } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 import { ButtonModule } from 'primeng/button';
@@ -6,6 +6,8 @@ import { CardModule } from 'primeng/card';
 import { ImageModule } from 'primeng/image';
 import { ChartModule } from 'primeng/chart';
 import { KnobModule } from 'primeng/knob';
+import { ProgressBarModule } from 'primeng/progressbar';
+import { ReactiveFormsModule, FormControl, FormGroup } from '@angular/forms';
 
 import { faker } from '@faker-js/faker';
 import { ApiService } from '../../services/ApiService';
@@ -28,11 +30,19 @@ interface IFeedback {
     ImageModule,
     ChartModule,
     KnobModule,
+    ProgressBarModule,
+    ReactiveFormsModule
   ],
   templateUrl: './home.component.html',
   styleUrls: ['./home.component.css']
 })
 export class HomeComponent implements OnInit {
+
+  loading: boolean = false;
+
+  formGroupElogio!: FormGroup;
+  formGroupSugestao!: FormGroup;
+  formGroupCritica!: FormGroup;
 
   pieData: any;
   pieOptions: any;
@@ -45,26 +55,28 @@ export class HomeComponent implements OnInit {
   surfaceBorder: any;
   backgroundColor: any;
 
-  messages!: any[];
+  messagesStorage: any[] = [];
+  messages: any[] = [];
+  typeCounter: { [key: string]: number } = {};
 
-  knobValue: number = 70;
+  size: number = 0;
   
   constructor(private apiService: ApiService) { }
   
-
   ngOnInit() {
+
     this.documentStyle = getComputedStyle(document.documentElement);
     this.textColor = this.documentStyle.getPropertyValue('--text-color');
     this.textColorSecondary = this.documentStyle.getPropertyValue('--text-color-secondary');
     this.surfaceBorder = this.documentStyle.getPropertyValue('--surface-border');
-
     this.backgroundColor = [this.documentStyle.getPropertyValue('--green-300'), this.documentStyle.getPropertyValue('--yellow-300'), this.documentStyle.getPropertyValue('--red-300')];
 
-    this.mountPieChart();
-    this.mountStackedBarChart();
+    this.mountKnob();
+    this.info();
   }
 
   async elogioClicked() {
+    this.loading = true;
     console.log('Elogio button clicked');
 
     let data: IFeedback = { 
@@ -77,8 +89,9 @@ export class HomeComponent implements OnInit {
     this.apiService.send(data).subscribe({
       next: (response) => {
         data.messageId = response.messageId;
-        this.setMessages(data);
+        this.setStorageMessage(data);
         console.log('Recebido:', data);
+        this.info();
       },
       error: (error) => {
         console.error('Erro ao chamar a API:', error);
@@ -87,6 +100,7 @@ export class HomeComponent implements OnInit {
   }
 
   sugestaoClicked() {
+    this.loading = true;
     console.log('Sugestão button clicked');
 
     let data: IFeedback = { 
@@ -99,8 +113,9 @@ export class HomeComponent implements OnInit {
     this.apiService.send(data).subscribe({
       next: (response) => {
         data.messageId = response.messageId;
-        this.setMessages(data);
+        this.setStorageMessage(data);
         console.log('Recebido:', data);
+        this.info();
       },
       error: (error) => {
         console.error('Erro ao chamar a API:', error);
@@ -109,6 +124,7 @@ export class HomeComponent implements OnInit {
   }
 
   criticaClicked() {
+    this.loading = true;
     console.log('Crítica button clicked');
 
     let data: IFeedback = { 
@@ -121,8 +137,9 @@ export class HomeComponent implements OnInit {
     this.apiService.send(data).subscribe({
       next: (response) => {
         data.messageId = response.messageId;
-        this.setMessages(data);
+        this.setStorageMessage(data);
         console.log('Recebido:', data);
+        this.info();
       },
       error: (error) => {
         console.error('Erro ao chamar a API:', error);
@@ -130,12 +147,71 @@ export class HomeComponent implements OnInit {
     });
   }
   
+  info() {
+    this.loading = true;
+    this.apiService.size().subscribe({
+      next: (response) => {
+        console.log('Tamanho da fila:', response.size);
+        this.size = response.size;
+        const infoPromises: Promise<any>[] = [];
+        for (let i = 0; i < this.size; i++) {
+          const infoPromise = new Promise<void>((resolve, reject) => {
+            this.apiService.info().subscribe({
+              next: (response) => {
+                (response.messages.Messages ?? []).forEach((message: any) => {
+                  this.messages[message.MessageId] = JSON.parse(message.Body || '{}');
+                });
+                resolve();
+              },
+              error: (error) => {
+                console.error('Erro ao chamar a API:', error);
+                reject(error);
+              }
+            });
+          });
+
+          infoPromises.push(infoPromise);
+        }
+
+        Promise.all(infoPromises)
+          .then(() => {
+            this.typeCounter = {};
+            for (const key in this.messages) {
+              if (this.messages.hasOwnProperty(key)) {
+                const message = this.messages[key];
+                if (!this.typeCounter[message.type]) {
+                  this.typeCounter[message.type] = 0;
+                }
+                this.typeCounter[message.type]++;
+              }
+            }
+            this.mountPieChart();
+            this.mountStackedBarChart();
+            this.mountKnob();
+            this.loading = false;
+          })
+          .catch((error) => {
+            console.error('Erro ao realizar chamadas a this.apiService.info():', error);
+          });
+
+      },
+      error: (error) => {
+        console.error('Erro ao chamar a API:', error);
+      }
+    });
+  }
+
   mountPieChart() {
+
+    let elogios = this.typeCounter['elogio'];
+    let sugestoes = this.typeCounter['sugestao'];
+    let criticas = this.typeCounter['critica'];
+
     this.pieData = {
       labels: ['Elogios', 'Sugestões', 'Críticas'],
       datasets: [
         {
-          data: [300, 50, 100],
+          data: [elogios, sugestoes, criticas],
           backgroundColor: this.backgroundColor,
           hoverBackgroundColor: [this.documentStyle.getPropertyValue('--green-100'), this.documentStyle.getPropertyValue('--yellow-100'), this.documentStyle.getPropertyValue('--red-100')]
         }
@@ -152,7 +228,7 @@ export class HomeComponent implements OnInit {
           }
         }
       }
-    };    
+    };
   } 
 
   mountStackedBarChart() {
@@ -221,13 +297,25 @@ export class HomeComponent implements OnInit {
     };
   }
 
-  getMessages() {
+  mountKnob() {
+    this.formGroupElogio = new FormGroup({
+      value: new FormControl(this.typeCounter['elogio'])
+    });
+    this.formGroupSugestao = new FormGroup({
+      value: new FormControl(this.typeCounter['sugestao'])
+    });
+    this.formGroupCritica = new FormGroup({
+      value: new FormControl(this.typeCounter['critica'])
+    });
+  }
+
+  getStorageMessages() {
     return localStorage.getItem('messages') ? JSON.parse(localStorage.getItem('messages') || '{}') : []
   }
 
-  setMessages(value: any) {
-    this.messages = this.getMessages();
-    this.messages.push(value);
-    return localStorage.setItem('messages', JSON.stringify(this.messages));
+  setStorageMessage(value: any) {
+    this.messagesStorage = this.getStorageMessages();
+    this.messagesStorage.push(value);
+    return localStorage.setItem('messages', JSON.stringify(this.messagesStorage));
   }
 }

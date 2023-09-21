@@ -1,5 +1,8 @@
-<div style="max-width: 480px; margin: auto;">
+<div style="height: 3px;">
+    <p-progressBar *ngIf="loading" mode="indeterminate" [style]="{ height: '3px' }"></p-progressBar>
+</div>
 
+<div style="max-width: 480px; margin: auto;">
     <p-card header="Enviar Feedback" class="m-4">
         <div class="flex justify-content-center flex-wrap">
             <p-button icon="pi pi-thumbs-up" iconPos="right" label="Elogio"
@@ -16,25 +19,28 @@
     
     <p-card header="Feedback Info" class="m-4">
         <div class="flex justify-content-center flex-wrap">
-            <div class="flex align-items-start justify-content-center m-3">
-                <p-knob [readonly]="true"></p-knob>
-            </div>
-            <div class="flex align-items-center justify-content-center m-3">
-                <p-knob [readonly]="true"></p-knob>
-            </div>
-            <div class="flex align-items-end justify-content-center m-3">
-                <p-knob [readonly]="true"></p-knob>
-            </div>
+            <form [formGroup]="formGroupElogio" class="flex align-items-end justify-content-center m-3">
+                <p-knob formControlName="value" valueColor="#22c55d" [max]="size"></p-knob>
+            </form>
+            <form [formGroup]="formGroupSugestao" class="flex align-items-end justify-content-center m-3">
+                <p-knob formControlName="value" valueColor="#f59e0c" [max]="size"></p-knob>
+            </form>
+            <form [formGroup]="formGroupCritica" class="flex align-items-end justify-content-center m-3">
+                <p-knob formControlName="value" valueColor="#ef4444" [max]="size"></p-knob>
+            </form>
         </div>
-
-        <div class="my-4">
-            <h3>Status da Fila</h3>
-            <p-chart type="bar" [data]="stackedData" [options]="stackedOptions" height="280px"></p-chart>
+        <div style="text-align: center; color: #999">
+            <small>Total de <b>{{size}}</b> feedbacks em fila.</small>
         </div>
 
         <div class="my-4">
             <h3>Resumo</h3>
-            <p-chart type="doughnut" [data]="pieData" [options]="pieOptions" height="200px"></p-chart>
+            <p-chart id="pie-chart" type="doughnut" [data]="pieData" [options]="pieOptions" height="200px"></p-chart>
+        </div>
+
+        <div class="my-4">
+            <h3>Status da Fila <span style="font-weight: 300; color: #999;">(em desenvolvimento)</span></h3>
+            <p-chart id="bar-chart" type="bar" [data]="stackedData" [options]="stackedOptions" height="280px"></p-chart>
         </div>
     </p-card>
 </div>
