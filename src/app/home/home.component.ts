@@ -1,4 +1,4 @@
-import { Component, OnChanges, OnInit, SimpleChanges  } from '@angular/core';
+import { Component, OnInit  } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 import { ButtonModule } from 'primeng/button';
@@ -7,7 +7,7 @@ import { ImageModule } from 'primeng/image';
 import { ChartModule } from 'primeng/chart';
 import { KnobModule } from 'primeng/knob';
 import { ProgressBarModule } from 'primeng/progressbar';
-import { ReactiveFormsModule, FormControl, FormGroup } from '@angular/forms';
+import { TableModule } from 'primeng/table';
 
 import { faker } from '@faker-js/faker';
 import { ApiService } from '../../services/ApiService';
@@ -18,6 +18,13 @@ interface IFeedback {
   status: string;
   date: Date;
   messageId?: number;
+}
+
+interface IQueueSize {
+  totalSize: number;
+  ApproximateNumberOfMessages: number;
+  ApproximateNumberOfMessagesNotVisible: number;
+  ApproximateNumberOfMessagesDelayed: number;
 }
 
 @Component({
@@ -31,7 +38,7 @@ interface IFeedback {
     ChartModule,
     KnobModule,
     ProgressBarModule,
-    ReactiveFormsModule
+    TableModule
   ],
   templateUrl: './home.component.html',
   styleUrls: ['./home.component.css']
@@ -39,10 +46,6 @@ interface IFeedback {
 export class HomeComponent implements OnInit {
 
   loading: boolean = false;
-
-  formGroupElogio!: FormGroup;
-  formGroupSugestao!: FormGroup;
-  formGroupCritica!: FormGroup;
 
   pieData: any;
   pieOptions: any;
@@ -53,13 +56,15 @@ export class HomeComponent implements OnInit {
   textColor: any;
   textColorSecondary: any;
   surfaceBorder: any;
-  backgroundColor: any;
 
   messagesStorage: any[] = [];
   messages: any[] = [];
   typeCounter: { [key: string]: number } = {};
 
-  size: number = 0;
+  totalSize: number = 0;
+  elogioQueue!: IQueueSize;
+  sugestaoQueue!: IQueueSize;
+  criticaQueue!: IQueueSize;
   
   constructor(private apiService: ApiService) { }
   
@@ -69,9 +74,7 @@ export class HomeComponent implements OnInit {
     this.textColor = this.documentStyle.getPropertyValue('--text-color');
     this.textColorSecondary = this.documentStyle.getPropertyValue('--text-color-secondary');
     this.surfaceBorder = this.documentStyle.getPropertyValue('--surface-border');
-    this.backgroundColor = [this.documentStyle.getPropertyValue('--green-400'), this.documentStyle.getPropertyValue('--yellow-400'), this.documentStyle.getPropertyValue('--red-400')];
 
-    this.mountKnob();
     this.info();
   }
 
@@ -149,80 +152,73 @@ export class HomeComponent implements OnInit {
   
   info() {
     this.loading = true;
+
     this.apiService.size().subscribe({
       next: (response) => {
-        console.log('Tamanho da fila:', response.size);
-        this.size = response.size;
-        const infoPromises: Promise<any>[] = [];
-        for (let i = 0; i < this.size; i++) {
-          if(this.messages.length >= this.size) {
-            break;
-          }
-          const infoPromise = new Promise<void>((resolve, reject) => {
-            this.apiService.info().subscribe({
-              next: (response) => {
-                (response.messages.Messages ?? []).forEach((message: any) => {
-                  this.messages[message.MessageId] = JSON.parse(message.Body || '{}');
-                });
-                resolve();
-              },
-              error: (error) => {
-                console.error('Erro ao chamar a API:', error);
-                reject(error);
-              }
-            });
-          });
+        console.log('size():', response);
+        this.totalSize = response.totalSize;
 
-          infoPromises.push(infoPromise);
-        }
+        this.elogioQueue = response.topics.elogio;
+        this.sugestaoQueue = response.topics.sugestao;
+        this.criticaQueue = response.topics.critica;
 
-        Promise.all(infoPromises)
-          .then(() => {
-            this.typeCounter = {};
-            for (const key in this.messages) {
-              if (this.messages.hasOwnProperty(key)) {
-                const message = this.messages[key];
-                if (!this.typeCounter[message.type]) {
-                  this.typeCounter[message.type] = 0;
-                }
-                this.typeCounter[message.type]++;
-              }
-            }
-            this.mountPieChart();
-            this.mountStackedBarChart();
-            this.mountKnob();
-            this.loading = false;
-          })
-          .catch((error) => {
-            console.error('Erro ao realizar chamadas a this.apiService.info():', error);
-          });
-
+        this.mountStackedBarChart();
+        this.mountPieChart();
+        this.loading = false;
       },
       error: (error) => {
         console.error('Erro ao chamar a API:', error);
       }
     });
+
+    // this.apiService.info().subscribe({
+    //   next: (response) => {
+    //     console.log('info():', response);
+    //     this.loading = false;
+    //   },
+    //   error: (error) => {
+    //     console.error('Erro ao chamar a API:', error);
+    //     this.loading = false;
+    //   }
+    // });
   }
 
   mountPieChart() {
+    const elogio = this.typeCounter['elogio'] || 0;
+    const sugestao = this.typeCounter['sugestao'] || 0;
+    const critica = this.typeCounter['critica'] || 0;
+
     this.pieData = {
       labels: ['Elogios', 'Sugestões', 'Críticas'],
       datasets: [
         {
-          data: [this.typeCounter['elogio'], this.typeCounter['sugestao'], this.typeCounter['critica']],
-          backgroundColor: this.backgroundColor,
-          hoverBackgroundColor: [this.documentStyle.getPropertyValue('--green-100'), this.documentStyle.getPropertyValue('--yellow-100'), this.documentStyle.getPropertyValue('--red-100')]
+          data: [this.elogioQueue.totalSize, this.sugestaoQueue.totalSize, this.criticaQueue.totalSize],
+          backgroundColor: ['rgba(34, 197, 93, 0.6)', 'rgba(245, 158, 12, 0.6)', 'rgba(239, 68, 68, 0.6)'],
+          hoverBackgroundColor: ['rgba(34, 197, 93, 1)', 'rgba(245, 158, 12, 1)', 'rgba(239, 68, 68, 1)'],
+          borderColor: ['rgba(90, 90, 90, 0.7)', 'rgba(90, 90, 90, 0.7)', 'rgba(90, 90, 90, 0.7)'],
+          borderWidth: 1.2
         }
       ]
     };
 
     this.pieOptions = {
       showTooltips: true,
-      cutout: '50%',
+      cutout: '0%',
       plugins: {
         legend: {
           labels: {
-            color: this.textColor
+            color: this.textColor,
+            generateLabels: (chart:any) => {
+              const labels = chart.data.labels;
+              const dataset = chart.data.datasets[0];
+              const values = dataset.data;
+              return labels.map((label:any, index:any) => {
+                return {
+                  text: `${label}: ${values[index]}`,
+                  fillStyle: dataset.backgroundColor[index],
+                };
+              });
+            }
           }
         }
       }
@@ -230,32 +226,24 @@ export class HomeComponent implements OnInit {
   } 
 
   mountStackedBarChart() {
-    // TODO: Refatorar e adaptar o gráfico com dados reais
-    const elogio = this.typeCounter['elogio'];
-    const sugestao = this.typeCounter['sugestao'];
-    const critica = this.typeCounter['critica'];
-
     this.stackedData = {
-      labels: ['Recebido', 'Em Processamento', 'Finalizado'],
+      labels: ['Elogios', 'Sugestões', 'Críticas'],
       datasets: [
         {
           type: 'bar',
-          label: 'Elogios',
-          backgroundColor: this.backgroundColor[0],
-          data: [elogio, elogio*2, elogio*3]
+          label: 'Visible',
+          data: [this.elogioQueue.ApproximateNumberOfMessages, this.sugestaoQueue.ApproximateNumberOfMessages, this.criticaQueue.ApproximateNumberOfMessages],
         },
         {
           type: 'bar',
-          label: 'Sugestões',
-          backgroundColor: this.backgroundColor[1],
-          data: [sugestao, sugestao*2, sugestao*3]
+          label: 'Not Visible',
+          data: [this.elogioQueue.ApproximateNumberOfMessagesNotVisible, this.sugestaoQueue.ApproximateNumberOfMessagesNotVisible, this.criticaQueue.ApproximateNumberOfMessagesNotVisible]
         },
         {
           type: 'bar',
-          label: 'Críticas',
-          backgroundColor: this.backgroundColor[2],
-          data: [critica, critica*2, critica*3]
-        }
+          label: 'Delayed',
+          data: [this.elogioQueue.ApproximateNumberOfMessagesDelayed, this.sugestaoQueue.ApproximateNumberOfMessagesDelayed, this.criticaQueue.ApproximateNumberOfMessagesDelayed]
+        },
       ]
     };
 
@@ -269,6 +257,7 @@ export class HomeComponent implements OnInit {
           intersect: false
         },
         legend: {
+          position: 'bottom',
           labels: {
             color: this.textColor
           }
@@ -299,18 +288,6 @@ export class HomeComponent implements OnInit {
     };
   }
 
-  mountKnob() {
-    this.formGroupElogio = new FormGroup({
-      value: new FormControl(this.typeCounter['elogio'])
-    });
-    this.formGroupSugestao = new FormGroup({
-      value: new FormControl(this.typeCounter['sugestao'])
-    });
-    this.formGroupCritica = new FormGroup({
-      value: new FormControl(this.typeCounter['critica'])
-    });
-  }
-
   getStorageMessages() {
     return localStorage.getItem('messages') ? JSON.parse(localStorage.getItem('messages') || '{}') : []
   }
@@ -319,5 +296,14 @@ export class HomeComponent implements OnInit {
     this.messagesStorage = this.getStorageMessages();
     this.messagesStorage.push(value);
     return localStorage.setItem('messages', JSON.stringify(this.messagesStorage));
+  }
+  
+  isValidJSON(str: string) {
+    try {
+      JSON.parse(str);
+      return true;
+    } catch (e) {
+      return false;
+    }
   }
 }
