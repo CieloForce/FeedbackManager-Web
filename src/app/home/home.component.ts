@@ -1,18 +1,7 @@
 import { Component, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-
-import { ButtonModule } from 'primeng/button';
-import { CardModule } from 'primeng/card';
-import { ImageModule } from 'primeng/image';
-import { ChartModule } from 'primeng/chart';
-import { KnobModule } from 'primeng/knob';
-import { ProgressBarModule } from 'primeng/progressbar';
-import { InputTextareaModule } from 'primeng/inputtextarea';
-import { ToastModule } from 'primeng/toast';
-import { MessageService } from 'primeng/api';
-
-import { ApiService } from '../../services/ApiService';
+import { ConfirmationService, MessageService, ConfirmEventType } from 'primeng/api';
+import { ApiService } from '../services/ApiService';
+import { Observable } from 'rxjs';
 
 interface IFeedback {
   type: string;
@@ -30,21 +19,8 @@ interface IQueueSize {
 }
 
 @Component({
+  providers: [MessageService, ConfirmationService],
   selector: 'app-home',
-  standalone: true,
-  imports: [
-    CommonModule,
-    ButtonModule,
-    CardModule,
-    ImageModule,
-    ChartModule,
-    KnobModule,
-    ProgressBarModule,
-    InputTextareaModule,
-    ToastModule,
-    FormsModule
-  ],
-  providers: [MessageService],
   templateUrl: './home.component.html',
   styleUrls: ['./home.component.css']
 })
@@ -73,8 +49,9 @@ export class HomeComponent implements OnInit {
   sugestaoQueue!: IQueueSize;
   criticaQueue!: IQueueSize;
   animationDuration: any = 1000;
+  position: string = 'bottom';
 
-  constructor(private apiService: ApiService, private messageService: MessageService) { }
+  constructor(private apiService: ApiService, private messageService: MessageService, private confirmationService: ConfirmationService) { }
 
   ngOnInit() {
     this.documentStyle = getComputedStyle(document.documentElement);
@@ -106,6 +83,7 @@ export class HomeComponent implements OnInit {
 
           this.setStorageMessage(data);
           this.size();
+          this.messageService.add({ severity: 'success', summary: 'Feedback enviado com sucesso!', detail: `${type}: ${response.messageId}.` });
         },
         error: (error) => {
           console.error('Erro ao chamar a API:', error);
@@ -117,13 +95,45 @@ export class HomeComponent implements OnInit {
     }
   }
 
-  async consume(type : string){
+
+  size(): Observable<any> {
+    this.loading = true;
+    const sizeObservable: Observable<any> = this.apiService.size();
+    sizeObservable.subscribe({
+      next: (response: any) => {
+        console.log('size():', response);
+
+        this.totalSize = response.totalSize;
+        this.elogioQueue = response.topics.elogio;
+        this.sugestaoQueue = response.topics.sugestao;
+        this.criticaQueue = response.topics.critica;
+
+        this.mountStackedBarChart();
+        this.mountPieChart();
+        this.loading = false;
+        this.animationDuration = 0;
+      },
+      error: (error: any) => {
+        console.error('Erro ao chamar a API:', error);
+      }
+    });
+
+    return sizeObservable;
+  }
+
+  consume(type: string) {
     this.apiService.info(type).subscribe({
       next: (response) => {
         console.log('consume():', response);
         this.loading = false;
-        this.size();
-        this.messageService.add({ severity: 'success', summary: 'Operação Concluída', detail: 'Dados salvos com sucesso' });
+        this.size().toPromise();
+
+        if (response.messages.Messages){
+          this.confirmConsume(type, response.messages.Messages[0].MessageId, response.messages.Messages[0].receiptHandle, JSON.parse(JSON.parse(response.messages.Messages[0].Body).Message).message);
+        }
+        else {
+          this.messageService.add({ severity: 'info', summary: 'Info', detail: 'Não há mensagens prontas para consumir!' });
+        }
       },
       error: (error) => {
         console.error('Erro ao chamar a API:', error);
@@ -131,29 +141,27 @@ export class HomeComponent implements OnInit {
       }
     });
   }
-
-size() {
-  this.loading = true;
-
-  this.apiService.size().subscribe({
-    next: (response) => {
-      console.log('size():', response);
-
-      this.totalSize = response.totalSize;
-      this.elogioQueue = response.topics.elogio;
-      this.sugestaoQueue = response.topics.sugestao;
-      this.criticaQueue = response.topics.critica;
-
-      this.mountStackedBarChart();
-      this.mountPieChart();
-      this.loading = false;
-      this.animationDuration = 0;
-    },
-    error: (error) => {
-      console.error('Erro ao chamar a API:', error);
-    }
-  });
-}
+  confirmConsume(type: string, messageId: string, receiptHandle: string, message: any){
+    this.confirmationService.confirm({
+      message: `Deseja consumir o feedback ${type}: ${message}?`,
+      header: messageId,
+      icon: 'pi pi-info-circle',
+      accept: () => {
+        this.messageService.add({ severity: 'info', summary: 'Confirmed', detail: 'Record consumed' });
+      },
+      reject: (type: ConfirmEventType) => {
+        switch (type) {
+          case ConfirmEventType.REJECT:
+            this.messageService.add({ severity: 'error', summary: 'Rejected', detail: 'You have rejected' });
+            break;
+          case ConfirmEventType.CANCEL:
+            this.messageService.add({ severity: 'warn', summary: 'Cancelled', detail: 'You have cancelled' });
+            break;
+        }
+      },
+      key: 'positionDialog'
+    });
+  }
 
 mountPieChart() {
   this.pieData = {
