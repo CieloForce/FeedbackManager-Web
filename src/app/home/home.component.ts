@@ -1,5 +1,6 @@
-import { Component, OnInit  } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 
 import { ButtonModule } from 'primeng/button';
 import { CardModule } from 'primeng/card';
@@ -7,9 +8,10 @@ import { ImageModule } from 'primeng/image';
 import { ChartModule } from 'primeng/chart';
 import { KnobModule } from 'primeng/knob';
 import { ProgressBarModule } from 'primeng/progressbar';
-import { TableModule } from 'primeng/table';
+import { InputTextareaModule } from 'primeng/inputtextarea';
+import { ToastModule } from 'primeng/toast';
+import { MessageService } from 'primeng/api';
 
-import { faker } from '@faker-js/faker';
 import { ApiService } from '../../services/ApiService';
 
 interface IFeedback {
@@ -38,14 +40,19 @@ interface IQueueSize {
     ChartModule,
     KnobModule,
     ProgressBarModule,
-    TableModule
+    InputTextareaModule,
+    ToastModule,
+    FormsModule
   ],
+  providers: [MessageService],
   templateUrl: './home.component.html',
   styleUrls: ['./home.component.css']
 })
 export class HomeComponent implements OnInit {
 
   loading: boolean = false;
+
+  textAreaValue: string = '';
 
   pieData: any;
   pieOptions: any;
@@ -65,245 +72,212 @@ export class HomeComponent implements OnInit {
   elogioQueue!: IQueueSize;
   sugestaoQueue!: IQueueSize;
   criticaQueue!: IQueueSize;
-  
-  constructor(private apiService: ApiService) { }
-  
-  ngOnInit() {
+  animationDuration: any = 1000;
 
+  constructor(private apiService: ApiService, private messageService: MessageService) { }
+
+  ngOnInit() {
     this.documentStyle = getComputedStyle(document.documentElement);
     this.textColor = this.documentStyle.getPropertyValue('--text-color');
     this.textColorSecondary = this.documentStyle.getPropertyValue('--text-color-secondary');
     this.surfaceBorder = this.documentStyle.getPropertyValue('--surface-border');
 
-    this.info();
+    this.size();
   }
 
-  async elogioClicked() {
-    this.loading = true;
-    console.log('Elogio button clicked');
+  async send(type : string) {
+    console.log(`${type} button clicked`);
 
-    let data: IFeedback = { 
-      type: 'elogio',
-      message: faker.lorem.sentence(),
-      status: 'Recebido',
-      date: new Date(),
-    };
-
-    this.apiService.send(data).subscribe({
-      next: (response) => {
-        data.messageId = response.messageId;
-        this.setStorageMessage(data);
-        console.log('Recebido:', data);
-        this.info();
-      },
-      error: (error) => {
-        console.error('Erro ao chamar a API:', error);
-      }
-    });
-  }
-
-  sugestaoClicked() {
-    this.loading = true;
-    console.log('Sugestão button clicked');
-
-    let data: IFeedback = { 
-      type: 'sugestao',
-      message: faker.lorem.sentence(),
-      status: 'Recebido',
-      date: new Date(),
-    };
-
-    this.apiService.send(data).subscribe({
-      next: (response) => {
-        data.messageId = response.messageId;
-        this.setStorageMessage(data);
-        console.log('Recebido:', data);
-        this.info();
-      },
-      error: (error) => {
-        console.error('Erro ao chamar a API:', error);
-      }
-    });
-  }
-
-  criticaClicked() {
-    this.loading = true;
-    console.log('Crítica button clicked');
-
-    let data: IFeedback = { 
-      type: 'critica',
-      message: faker.lorem.sentence(),
-      status: 'Recebido',
-      date: new Date(),
-    };
-
-    this.apiService.send(data).subscribe({
-      next: (response) => {
-        data.messageId = response.messageId;
-        this.setStorageMessage(data);
-        console.log('Recebido:', data);
-        this.info();
-      },
-      error: (error) => {
-        console.error('Erro ao chamar a API:', error);
-      }
-    });
-  }
-  
-  info() {
     this.loading = true;
 
-    this.apiService.size().subscribe({
-      next: (response) => {
-        console.log('size():', response);
-        this.totalSize = response.totalSize;
+    if (this.textAreaValue) {
+      let data: IFeedback = {
+        type: type,
+        message: this.textAreaValue,
+        status: 'Recebido',
+        date: new Date(),
+      };
+      this.apiService.send(data).subscribe({
+        next: (response) => {
+          console.log('Recebido:', data);
 
-        this.elogioQueue = response.topics.elogio;
-        this.sugestaoQueue = response.topics.sugestao;
-        this.criticaQueue = response.topics.critica;
+          data.messageId = response.messageId;
+          this.textAreaValue = '';
 
-        this.mountStackedBarChart();
-        this.mountPieChart();
-        this.loading = false;
-      },
-      error: (error) => {
-        console.error('Erro ao chamar a API:', error);
-      }
-    });
-
-    // this.apiService.info().subscribe({
-    //   next: (response) => {
-    //     console.log('info():', response);
-    //     this.loading = false;
-    //   },
-    //   error: (error) => {
-    //     console.error('Erro ao chamar a API:', error);
-    //     this.loading = false;
-    //   }
-    // });
-  }
-
-  mountPieChart() {
-    const elogio = this.typeCounter['elogio'] || 0;
-    const sugestao = this.typeCounter['sugestao'] || 0;
-    const critica = this.typeCounter['critica'] || 0;
-
-    this.pieData = {
-      labels: ['Elogios', 'Sugestões', 'Críticas'],
-      datasets: [
-        {
-          data: [this.elogioQueue.totalSize, this.sugestaoQueue.totalSize, this.criticaQueue.totalSize],
-          backgroundColor: ['rgba(34, 197, 93, 0.6)', 'rgba(245, 158, 12, 0.6)', 'rgba(239, 68, 68, 0.6)'],
-          hoverBackgroundColor: ['rgba(34, 197, 93, 1)', 'rgba(245, 158, 12, 1)', 'rgba(239, 68, 68, 1)'],
-          borderColor: ['rgba(90, 90, 90, 0.7)', 'rgba(90, 90, 90, 0.7)', 'rgba(90, 90, 90, 0.7)'],
-          borderWidth: 1.2
+          this.setStorageMessage(data);
+          this.size();
+        },
+        error: (error) => {
+          console.error('Erro ao chamar a API:', error);
         }
-      ]
-    };
-
-    this.pieOptions = {
-      showTooltips: true,
-      cutout: '0%',
-      plugins: {
-        legend: {
-          labels: {
-            color: this.textColor,
-            generateLabels: (chart:any) => {
-              const labels = chart.data.labels;
-              const dataset = chart.data.datasets[0];
-              const values = dataset.data;
-              return labels.map((label:any, index:any) => {
-                return {
-                  text: `${label}: ${values[index]}`,
-                  fillStyle: dataset.backgroundColor[index],
-                };
-              });
-            }
-          }
-        }
-      }
-    };
-  } 
-
-  mountStackedBarChart() {
-    this.stackedData = {
-      labels: ['Elogios', 'Sugestões', 'Críticas'],
-      datasets: [
-        {
-          type: 'bar',
-          label: 'Visible',
-          data: [this.elogioQueue.ApproximateNumberOfMessages, this.sugestaoQueue.ApproximateNumberOfMessages, this.criticaQueue.ApproximateNumberOfMessages],
-        },
-        {
-          type: 'bar',
-          label: 'Not Visible',
-          data: [this.elogioQueue.ApproximateNumberOfMessagesNotVisible, this.sugestaoQueue.ApproximateNumberOfMessagesNotVisible, this.criticaQueue.ApproximateNumberOfMessagesNotVisible]
-        },
-        {
-          type: 'bar',
-          label: 'Delayed',
-          data: [this.elogioQueue.ApproximateNumberOfMessagesDelayed, this.sugestaoQueue.ApproximateNumberOfMessagesDelayed, this.criticaQueue.ApproximateNumberOfMessagesDelayed]
-        },
-      ]
-    };
-
-    this.stackedOptions = {
-      indexAxis: 'y',
-      maintainAspectRatio: false,
-      aspectRatio: 0.8,
-      plugins: {
-        tooltips: {
-          mode: 'index',
-          intersect: false
-        },
-        legend: {
-          position: 'bottom',
-          labels: {
-            color: this.textColor
-          }
-        }
-      },
-      scales: {
-        x: {
-          stacked: true,
-          ticks: {
-            color: this.textColorSecondary
-          },
-          grid: {
-            color: this.surfaceBorder,
-            drawBorder: false
-          }
-        },
-        y: {
-          stacked: true,
-          ticks: {
-            color: this.textColorSecondary
-          },
-          grid: {
-            color: this.surfaceBorder,
-            drawBorder: false
-          }
-        }
-      }
-    };
-  }
-
-  getStorageMessages() {
-    return localStorage.getItem('messages') ? JSON.parse(localStorage.getItem('messages') || '{}') : []
-  }
-
-  setStorageMessage(value: any) {
-    this.messagesStorage = this.getStorageMessages();
-    this.messagesStorage.push(value);
-    return localStorage.setItem('messages', JSON.stringify(this.messagesStorage));
-  }
-  
-  isValidJSON(str: string) {
-    try {
-      JSON.parse(str);
-      return true;
-    } catch (e) {
-      return false;
+      });
+    } else {
+      this.textAreaValue = '';
+      this.loading = false;
     }
   }
+
+  async consume(type : string){
+    this.apiService.info(type).subscribe({
+      next: (response) => {
+        console.log('consume():', response);
+        this.loading = false;
+        this.size();
+        this.messageService.add({ severity: 'success', summary: 'Operação Concluída', detail: 'Dados salvos com sucesso' });
+      },
+      error: (error) => {
+        console.error('Erro ao chamar a API:', error);
+        this.loading = false;
+      }
+    });
+  }
+
+size() {
+  this.loading = true;
+
+  this.apiService.size().subscribe({
+    next: (response) => {
+      console.log('size():', response);
+
+      this.totalSize = response.totalSize;
+      this.elogioQueue = response.topics.elogio;
+      this.sugestaoQueue = response.topics.sugestao;
+      this.criticaQueue = response.topics.critica;
+
+      this.mountStackedBarChart();
+      this.mountPieChart();
+      this.loading = false;
+      this.animationDuration = 0;
+    },
+    error: (error) => {
+      console.error('Erro ao chamar a API:', error);
+    }
+  });
+}
+
+mountPieChart() {
+  this.pieData = {
+    labels: ['Elogios', 'Sugestões', 'Críticas'],
+    datasets: [
+      {
+        data: [this.elogioQueue.totalSize, this.sugestaoQueue.totalSize, this.criticaQueue.totalSize],
+        backgroundColor: ['rgba(34, 197, 93, 0.6)', 'rgba(245, 158, 12, 0.6)', 'rgba(239, 68, 68, 0.6)'],
+        hoverBackgroundColor: ['rgba(34, 197, 93, 1)', 'rgba(245, 158, 12, 1)', 'rgba(239, 68, 68, 1)'],
+        borderColor: ['rgba(90, 90, 90, 0.7)', 'rgba(90, 90, 90, 0.7)', 'rgba(90, 90, 90, 0.7)'],
+        borderWidth: 1.2
+      }
+    ]
+  };
+
+  this.pieOptions = {
+    animation: {
+      duration: this.animationDuration
+    },
+    showTooltips: true,
+    cutout: '0%',
+    plugins: {
+      legend: {
+        labels: {
+          color: this.textColor,
+          generateLabels: (chart: any) => {
+            const labels = chart.data.labels;
+            const dataset = chart.data.datasets[0];
+            const values = dataset.data;
+            return labels.map((label: any, index: any) => {
+              return {
+                text: `${label}: ${values[index]}`,
+                fillStyle: dataset.backgroundColor[index],
+              };
+            });
+          }
+        }
+      }
+    }
+  };
+}
+
+mountStackedBarChart() {
+  this.stackedData = {
+    labels: ['Elogios', 'Sugestões', 'Críticas'],
+    datasets: [
+      {
+        type: 'bar',
+        label: 'Visible',
+        data: [this.elogioQueue.ApproximateNumberOfMessages, this.sugestaoQueue.ApproximateNumberOfMessages, this.criticaQueue.ApproximateNumberOfMessages],
+      },
+      {
+        type: 'bar',
+        label: 'Not Visible',
+        data: [this.elogioQueue.ApproximateNumberOfMessagesNotVisible, this.sugestaoQueue.ApproximateNumberOfMessagesNotVisible, this.criticaQueue.ApproximateNumberOfMessagesNotVisible]
+      },
+      {
+        type: 'bar',
+        label: 'Delayed',
+        data: [this.elogioQueue.ApproximateNumberOfMessagesDelayed, this.sugestaoQueue.ApproximateNumberOfMessagesDelayed, this.criticaQueue.ApproximateNumberOfMessagesDelayed]
+      },
+    ]
+  };
+
+  this.stackedOptions = {
+    animation: {
+      duration: this.animationDuration
+    },
+    indexAxis: 'y',
+    maintainAspectRatio: false,
+    aspectRatio: 0.8,
+    plugins: {
+      tooltips: {
+        mode: 'index',
+        intersect: false
+      },
+      legend: {
+        position: 'bottom',
+        labels: {
+          color: this.textColor
+        }
+      }
+    },
+    scales: {
+      x: {
+        stacked: true,
+        ticks: {
+          color: this.textColorSecondary
+        },
+        grid: {
+          color: this.surfaceBorder,
+          drawBorder: false
+        }
+      },
+      y: {
+        stacked: true,
+        ticks: {
+          color: this.textColorSecondary
+        },
+        grid: {
+          color: this.surfaceBorder,
+          drawBorder: false
+        }
+      }
+    }
+  };
+}
+
+getStorageMessages() {
+  return localStorage.getItem('messages') ? JSON.parse(localStorage.getItem('messages') || '{}') : []
+}
+
+setStorageMessage(value: any) {
+  this.messagesStorage = this.getStorageMessages();
+  this.messagesStorage.push(value);
+  return localStorage.setItem('messages', JSON.stringify(this.messagesStorage));
+}
+
+isValidJSON(str: string) {
+  try {
+    JSON.parse(str);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
 }

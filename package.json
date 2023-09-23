@@ -3,6 +3,7 @@
   "version": "0.0.0",
   "description": "Example project from an angular.io guide.",
   "license": "MIT",
+  "type": "module",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
@@ -14,6 +15,7 @@
   "private": true,
   "dependencies": {
     "@angular/animations": "^16.1.0-rc.0",
+    "@angular/cdk": "^16.2.5",
     "@angular/common": "^16.1.0-rc.0",
     "@angular/compiler": "^16.1.0-rc.0",
     "@angular/core": "^16.1.0-rc.0",
