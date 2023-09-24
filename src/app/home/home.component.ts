@@ -125,15 +125,14 @@ export class HomeComponent implements OnInit {
     this.apiService.info(type).subscribe({
       next: (response) => {
         console.log('consume():', response);
-        this.loading = false;
         this.size().toPromise();
-
         if (response.messages.Messages){
-          this.confirmConsume(type, response.messages.Messages[0].MessageId, response.messages.Messages[0].receiptHandle, JSON.parse(JSON.parse(response.messages.Messages[0].Body).Message).message);
+          this.confirmConsume(type, response.messages.Messages[0].MessageId, response.messages.Messages[0].ReceiptHandle, JSON.parse(JSON.parse(response.messages.Messages[0].Body).Message).message);
         }
         else {
           this.messageService.add({ severity: 'info', summary: 'Info', detail: 'Não há mensagens prontas para consumir!' });
         }
+        this.loading = false;
       },
       error: (error) => {
         console.error('Erro ao chamar a API:', error);
@@ -141,13 +140,25 @@ export class HomeComponent implements OnInit {
       }
     });
   }
+
   confirmConsume(type: string, messageId: string, receiptHandle: string, message: any){
+    console.log('confirmConsume():', type, messageId, receiptHandle, message);
     this.confirmationService.confirm({
       message: `Deseja consumir o feedback ${type}: ${message}?`,
       header: messageId,
       icon: 'pi pi-info-circle',
       accept: () => {
-        this.messageService.add({ severity: 'info', summary: 'Confirmed', detail: 'Record consumed' });
+        this.apiService.purge(type, receiptHandle).subscribe({
+          next: (response) => {
+            console.log('purge():', response);
+            this.size().toPromise();
+            this.messageService.add({ severity: 'info', summary: 'Confirmed', detail: 'Record consumed' });
+          },
+          error: (error) => {
+            console.error('Erro ao chamar a API:', error);
+            this.loading = false;
+          }
+        });
       },
       reject: (type: ConfirmEventType) => {
         switch (type) {
@@ -163,129 +174,129 @@ export class HomeComponent implements OnInit {
     });
   }
 
-mountPieChart() {
-  this.pieData = {
-    labels: ['Elogios', 'Sugestões', 'Críticas'],
-    datasets: [
-      {
-        data: [this.elogioQueue.totalSize, this.sugestaoQueue.totalSize, this.criticaQueue.totalSize],
-        backgroundColor: ['rgba(34, 197, 93, 0.6)', 'rgba(245, 158, 12, 0.6)', 'rgba(239, 68, 68, 0.6)'],
-        hoverBackgroundColor: ['rgba(34, 197, 93, 1)', 'rgba(245, 158, 12, 1)', 'rgba(239, 68, 68, 1)'],
-        borderColor: ['rgba(90, 90, 90, 0.7)', 'rgba(90, 90, 90, 0.7)', 'rgba(90, 90, 90, 0.7)'],
-        borderWidth: 1.2
-      }
-    ]
-  };
+  mountPieChart() {
+    this.pieData = {
+      labels: ['Elogios', 'Sugestões', 'Críticas'],
+      datasets: [
+        {
+          data: [this.elogioQueue.totalSize, this.sugestaoQueue.totalSize, this.criticaQueue.totalSize],
+          backgroundColor: ['rgba(34, 197, 93, 0.6)', 'rgba(245, 158, 12, 0.6)', 'rgba(239, 68, 68, 0.6)'],
+          hoverBackgroundColor: ['rgba(34, 197, 93, 1)', 'rgba(245, 158, 12, 1)', 'rgba(239, 68, 68, 1)'],
+          borderColor: ['rgba(90, 90, 90, 0.7)', 'rgba(90, 90, 90, 0.7)', 'rgba(90, 90, 90, 0.7)'],
+          borderWidth: 1.2
+        }
+      ]
+    };
 
-  this.pieOptions = {
-    animation: {
-      duration: this.animationDuration
-    },
-    showTooltips: true,
-    cutout: '0%',
-    plugins: {
-      legend: {
-        labels: {
-          color: this.textColor,
-          generateLabels: (chart: any) => {
-            const labels = chart.data.labels;
-            const dataset = chart.data.datasets[0];
-            const values = dataset.data;
-            return labels.map((label: any, index: any) => {
-              return {
-                text: `${label}: ${values[index]}`,
-                fillStyle: dataset.backgroundColor[index],
-              };
-            });
+    this.pieOptions = {
+      animation: {
+        duration: this.animationDuration
+      },
+      showTooltips: true,
+      cutout: '0%',
+      plugins: {
+        legend: {
+          labels: {
+            color: this.textColor,
+            generateLabels: (chart: any) => {
+              const labels = chart.data.labels;
+              const dataset = chart.data.datasets[0];
+              const values = dataset.data;
+              return labels.map((label: any, index: any) => {
+                return {
+                  text: `${label}: ${values[index]}`,
+                  fillStyle: dataset.backgroundColor[index],
+                };
+              });
+            }
           }
         }
       }
-    }
-  };
-}
-
-mountStackedBarChart() {
-  this.stackedData = {
-    labels: ['Elogios', 'Sugestões', 'Críticas'],
-    datasets: [
-      {
-        type: 'bar',
-        label: 'Visible',
-        data: [this.elogioQueue.ApproximateNumberOfMessages, this.sugestaoQueue.ApproximateNumberOfMessages, this.criticaQueue.ApproximateNumberOfMessages],
-      },
-      {
-        type: 'bar',
-        label: 'Not Visible',
-        data: [this.elogioQueue.ApproximateNumberOfMessagesNotVisible, this.sugestaoQueue.ApproximateNumberOfMessagesNotVisible, this.criticaQueue.ApproximateNumberOfMessagesNotVisible]
-      },
-      {
-        type: 'bar',
-        label: 'Delayed',
-        data: [this.elogioQueue.ApproximateNumberOfMessagesDelayed, this.sugestaoQueue.ApproximateNumberOfMessagesDelayed, this.criticaQueue.ApproximateNumberOfMessagesDelayed]
-      },
-    ]
-  };
-
-  this.stackedOptions = {
-    animation: {
-      duration: this.animationDuration
-    },
-    indexAxis: 'y',
-    maintainAspectRatio: false,
-    aspectRatio: 0.8,
-    plugins: {
-      tooltips: {
-        mode: 'index',
-        intersect: false
-      },
-      legend: {
-        position: 'bottom',
-        labels: {
-          color: this.textColor
-        }
-      }
-    },
-    scales: {
-      x: {
-        stacked: true,
-        ticks: {
-          color: this.textColorSecondary
-        },
-        grid: {
-          color: this.surfaceBorder,
-          drawBorder: false
-        }
-      },
-      y: {
-        stacked: true,
-        ticks: {
-          color: this.textColorSecondary
-        },
-        grid: {
-          color: this.surfaceBorder,
-          drawBorder: false
-        }
-      }
-    }
-  };
-}
-
-getStorageMessages() {
-  return localStorage.getItem('messages') ? JSON.parse(localStorage.getItem('messages') || '{}') : []
-}
-
-setStorageMessage(value: any) {
-  this.messagesStorage = this.getStorageMessages();
-  this.messagesStorage.push(value);
-  return localStorage.setItem('messages', JSON.stringify(this.messagesStorage));
-}
-
-isValidJSON(str: string) {
-  try {
-    JSON.parse(str);
-    return true;
-  } catch (e) {
-    return false;
+    };
   }
-}
+
+  mountStackedBarChart() {
+    this.stackedData = {
+      labels: ['Elogios', 'Sugestões', 'Críticas'],
+      datasets: [
+        {
+          type: 'bar',
+          label: 'Visible',
+          data: [this.elogioQueue.ApproximateNumberOfMessages, this.sugestaoQueue.ApproximateNumberOfMessages, this.criticaQueue.ApproximateNumberOfMessages],
+        },
+        {
+          type: 'bar',
+          label: 'Not Visible',
+          data: [this.elogioQueue.ApproximateNumberOfMessagesNotVisible, this.sugestaoQueue.ApproximateNumberOfMessagesNotVisible, this.criticaQueue.ApproximateNumberOfMessagesNotVisible]
+        },
+        {
+          type: 'bar',
+          label: 'Delayed',
+          data: [this.elogioQueue.ApproximateNumberOfMessagesDelayed, this.sugestaoQueue.ApproximateNumberOfMessagesDelayed, this.criticaQueue.ApproximateNumberOfMessagesDelayed]
+        },
+      ]
+    };
+
+    this.stackedOptions = {
+      animation: {
+        duration: this.animationDuration
+      },
+      indexAxis: 'y',
+      maintainAspectRatio: false,
+      aspectRatio: 0.8,
+      plugins: {
+        tooltips: {
+          mode: 'index',
+          intersect: false
+        },
+        legend: {
+          position: 'bottom',
+          labels: {
+            color: this.textColor
+          }
+        }
+      },
+      scales: {
+        x: {
+          stacked: true,
+          ticks: {
+            color: this.textColorSecondary
+          },
+          grid: {
+            color: this.surfaceBorder,
+            drawBorder: false
+          }
+        },
+        y: {
+          stacked: true,
+          ticks: {
+            color: this.textColorSecondary
+          },
+          grid: {
+            color: this.surfaceBorder,
+            drawBorder: false
+          }
+        }
+      }
+    };
+  }
+
+  getStorageMessages() {
+    return localStorage.getItem('messages') ? JSON.parse(localStorage.getItem('messages') || '{}') : []
+  }
+
+  setStorageMessage(value: any) {
+    this.messagesStorage = this.getStorageMessages();
+    this.messagesStorage.push(value);
+    return localStorage.setItem('messages', JSON.stringify(this.messagesStorage));
+  }
+
+  isValidJSON(str: string) {
+    try {
+      JSON.parse(str);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
 }

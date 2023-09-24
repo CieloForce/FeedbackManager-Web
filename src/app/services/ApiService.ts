@@ -51,11 +51,15 @@ export class ApiService {
         });
     }
 
-    purge(id: any): Observable<any> {
-        const endpoint = `${this.baseUrl}/purge/${id}`;
+    purge(feedback_type: string, receipt_handle: string): Observable<any> {
+        const endpoint = `${this.baseUrl}/purge/${feedback_type}`;
 
         const requestOptions: RequestInit = {
-            method: 'DELETE',
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ receipt_handle: receipt_handle }),
         };
 
         return new Observable((subscriber) => {
