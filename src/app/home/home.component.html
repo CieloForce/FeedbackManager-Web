@@ -12,13 +12,13 @@
             <div class="flex justify-content-center flex-wrap">
                 <p-button icon="pi pi-thumbs-up" iconPos="right" label="Elogio"
                     styleClass="p-button-raised p-button-text p-button-success" [disabled]="textAreaValue == ''"
-                    class="flex align-items-center justify-content-center m-2" (click)="send('elogio')"></p-button>
+                    class="flex align-items-center justify-content-center m-2" (click)="send('Compliment')"></p-button>
                 <p-button icon="pi pi-question" iconPos="right" label="Sugestão"
                     styleClass="p-button-raised p-button-text p-button-warning" [disabled]="textAreaValue == ''"
-                    class="flex align-items-center justify-content-center m-2" (click)="send('sugestao')"></p-button>
+                    class="flex align-items-center justify-content-center m-2" (click)="send('Suggestion')"></p-button>
                 <p-button icon="pi pi-exclamation-triangle" iconPos="right" label="Crítica"
                     styleClass="p-button-raised p-button-text p-button-danger" [disabled]="textAreaValue == ''"
-                    class="flex align-items-center justify-content-center m-2" (click)="send('critica')"></p-button>
+                    class="flex align-items-center justify-content-center m-2" (click)="send('Criticism')"></p-button>
             </div>
         </form>
     </p-card>
@@ -40,11 +40,11 @@
     <p-card header="Consumir Fila" class="m-4">
         <div class="flex justify-content-center flex-wrap">
             <p-button icon="pi pi-thumbs-up" iconPos="right" styleClass="p-button-rounded p-button-success p-button-lg"
-                class="flex align-items-center justify-content-center mx-4 my-2" (click)="consume('elogio')"></p-button>
+                class="flex align-items-center justify-content-center mx-4 my-2" (click)="consume('Compliment')"></p-button>
             <p-button icon="pi pi-question" iconPos="right" styleClass="p-button-rounded p-button-warning p-button-lg"
-                class="flex align-items-center justify-content-center mx-4 my-2" (click)="consume('sugestao')"></p-button>
+                class="flex align-items-center justify-content-center mx-4 my-2" (click)="consume('Suggestion')"></p-button>
             <p-button icon="pi pi-exclamation-triangle" iconPos="right" styleClass="p-button-rounded p-button-danger p-button-lg"
-                class="flex align-items-center justify-content-center mx-4 my-2" (click)="consume('critica')"></p-button>
+                class="flex align-items-center justify-content-center mx-4 my-2" (click)="consume('Criticism')"></p-button>
         </div>
     </p-card>
     <p-toast></p-toast>

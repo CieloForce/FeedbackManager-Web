@@ -6,7 +6,7 @@ import { Observable } from 'rxjs';
 })
 export class ApiService {
 
-    private baseUrl = 'http://localhost:3333';
+    private baseUrl = 'http://localhost:8080/api/v2';
 
     constructor() { }
 
@@ -29,19 +29,19 @@ export class ApiService {
         });
     }
 
-    info(type: any = ''): Observable<any> {
-        const endpoint = `${this.baseUrl}/info/${type}`;
+    messages(type: any = ''): Observable<any> {
+        const endpoint = `${this.baseUrl}/messages?queue=${type}`;
 
         return new Observable((subscriber) => {
             fetch(endpoint)
-                .then(response => response.json())
+                .then(response => (response || {}).json())
                 .then(data => subscriber.next(data))
                 .catch(error => subscriber.error(error));
         });
     }
 
     size(): Observable<any> {
-        const endpoint = `${this.baseUrl}/size/`;
+        const endpoint = `${this.baseUrl}/size`;
 
         return new Observable((subscriber) => {
             fetch(endpoint)
@@ -51,20 +51,20 @@ export class ApiService {
         });
     }
 
-    purge(feedback_type: string, receipt_handle: string): Observable<any> {
-        const endpoint = `${this.baseUrl}/purge/${feedback_type}`;
-
+    remove(feedback_type: string, receiptHandle: string): Observable<any> {
+        const endpoint = `${this.baseUrl}/remove?queue=${feedback_type}`;
+        
         const requestOptions: RequestInit = {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ receipt_handle: receipt_handle }),
+            body: JSON.stringify({ receiptHandle: receiptHandle }),
         };
 
         return new Observable((subscriber) => {
             fetch(endpoint, requestOptions)
-                .then(response => response.json())
+                .then(response => response)
                 .then(data => subscriber.next(data))
                 .catch(error => subscriber.error(error));
         });

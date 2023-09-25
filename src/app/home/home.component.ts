@@ -6,8 +6,8 @@ import { Observable } from 'rxjs';
 interface IFeedback {
   type: string;
   message: string;
-  status: string;
-  date: Date;
+  // status: string;
+  // date: Date;
   messageId?: number;
 }
 
@@ -59,7 +59,10 @@ export class HomeComponent implements OnInit {
     this.textColorSecondary = this.documentStyle.getPropertyValue('--text-color-secondary');
     this.surfaceBorder = this.documentStyle.getPropertyValue('--surface-border');
 
-    this.size();
+    setInterval(() => {
+      this.size();
+    }, 1000);
+    
   }
 
   async send(type : string) {
@@ -70,9 +73,7 @@ export class HomeComponent implements OnInit {
     if (this.textAreaValue) {
       let data: IFeedback = {
         type: type,
-        message: this.textAreaValue,
-        status: 'Recebido',
-        date: new Date(),
+        message: this.textAreaValue
       };
       this.apiService.send(data).subscribe({
         next: (response) => {
@@ -97,12 +98,9 @@ export class HomeComponent implements OnInit {
 
 
   size(): Observable<any> {
-    this.loading = true;
     const sizeObservable: Observable<any> = this.apiService.size();
     sizeObservable.subscribe({
       next: (response: any) => {
-        console.log('size():', response);
-
         this.totalSize = response.totalSize;
         this.elogioQueue = response.topics.elogio;
         this.sugestaoQueue = response.topics.sugestao;
@@ -122,12 +120,12 @@ export class HomeComponent implements OnInit {
   }
 
   consume(type: string) {
-    this.apiService.info(type).subscribe({
+    this.apiService.messages(type).subscribe({
       next: (response) => {
         console.log('consume():', response);
         this.size().toPromise();
-        if (response.messages.Messages){
-          this.confirmConsume(type, response.messages.Messages[0].MessageId, response.messages.Messages[0].ReceiptHandle, JSON.parse(JSON.parse(response.messages.Messages[0].Body).Message).message);
+        if (response.length > 0){
+          this.confirmConsume(type, response[0].messageId, response[0].receiptHandle, JSON.parse(response[0].body).Message);
         }
         else {
           this.messageService.add({ severity: 'info', summary: 'Info', detail: 'Não há mensagens prontas para consumir!' });
@@ -142,15 +140,15 @@ export class HomeComponent implements OnInit {
   }
 
   confirmConsume(type: string, messageId: string, receiptHandle: string, message: any){
-    console.log('confirmConsume():', type, messageId, receiptHandle, message);
+    console.log('confirmConsume():', type, receiptHandle);
     this.confirmationService.confirm({
       message: `Deseja consumir o feedback ${type}: ${message}?`,
       header: messageId,
       icon: 'pi pi-info-circle',
       accept: () => {
-        this.apiService.purge(type, receiptHandle).subscribe({
+        this.apiService.remove(type, receiptHandle).subscribe({
           next: (response) => {
-            console.log('purge():', response);
+            console.log('remove():', response);
             this.size().toPromise();
             this.messageService.add({ severity: 'info', summary: 'Confirmed', detail: 'Record consumed' });
           },
