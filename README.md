@@ -13,6 +13,7 @@
    <ul>
       <li>Angular</li>
       <li>PrimeNG</li>
+      <li>ChartJS</li>
       <li>RxJS</li>
    </ul>
    <h2>Estrutura do Projeto</h2>
